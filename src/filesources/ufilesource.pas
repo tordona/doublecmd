@@ -594,7 +594,7 @@ destructor TFileSource.Destroy;
 begin
   DCDebug('Destroying ', ClassName, ' when refcount=', DbgS(refcount));
 
-  if RefCount <> 0 then
+  if (RefCount <> 0) and (RefCount <> -1) then
   begin
     // There could have been an exception raised in the constructor
     // in which case RefCount will be 1, so only issue warning if there was no exception.
@@ -608,17 +608,15 @@ begin
     // Restore reference removed in Create and
     // remove the instance remaining in Manager.
 
-    // Increase refcount by 2, because we don't want removing the last instance
-    // from Manager to trigger another Destroy.
-
-    // RefCount = 0
+    // Increase refcount by 3, because we don't want removing the last instance
+    // from Manager to trigger another Destroy (FPC 3.3+ sets frefcount := -1
+    // in TInterfacedObject._Release before calling Destroy).
     InterLockedIncrement(frefcount);
     InterLockedIncrement(frefcount);
-    // RefCount = 2
+    InterLockedIncrement(frefcount);
     FileSourceManager.Remove(Self);
-    // RefCount = 1
     InterLockedDecrement(frefcount);
-    // RefCount = 0 (back at the final value)
+    InterLockedDecrement(frefcount);
   end
   else
     DCDebug('Error: Cannot remove file source - manager already destroyed!');
